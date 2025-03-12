@@ -4,25 +4,25 @@ plugins {
 }
 
 android {
-    namespace 'jp.takke.mfm_kt'
-    compileSdk 33
+    namespace = 'jp.takke.mfm_kt'
+    compileSdk = 33
 
     defaultConfig {
-        minSdk 21
-        targetSdk 33
+        minSdk = 21
+        targetSdk = 33
 
         consumerProguardFiles "consumer-rules.pro"
     }
 
     buildTypes {
         release {
-            minifyEnabled false
+            minifyEnabled = false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_11
-        targetCompatibility JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
     }
 }
 
