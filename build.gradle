@@ -3,4 +3,31 @@ plugins {
     id 'com.android.application' version '8.3.0' apply false
     id 'com.android.library' version '8.3.0' apply false
     id 'org.jetbrains.kotlin.android' version '1.9.23' apply false
+    id 'maven-publish'
+}
+
+allprojects {
+    group = 'jp.takke.mfm_kt'
+    version = '1.0.0'
+}
+
+subprojects {
+    if (project.name != 'sample_activity') {
+        apply plugin: 'maven-publish'
+        
+        afterEvaluate {
+            publishing {
+                publications {
+                    maven(MavenPublication) {
+                        afterEvaluate {
+                            from components.release
+                        }
+                        groupId = project.group
+                        artifactId = project.name
+                        version = project.version
+                    }
+                }
+            }
+        }
+    }
 }
