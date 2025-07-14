@@ -5,8 +5,8 @@ package jp.takke.mfm_kt
 import jp.takke.mfm_kt.syntax_parser.MfmNode
 import jp.takke.mfm_kt.syntax_parser.MfmSyntaxParser
 import jp.takke.mfm_kt.token_parser.MfmTokenParser
-import org.assertj.core.api.Assertions.assertThat
-import org.junit.Test
+import kotlin.test.Test
+import kotlin.test.assertEquals
 
 
 class MfmSyntaxParserTest {
@@ -19,14 +19,15 @@ class MfmSyntaxParserTest {
         MfmSyntaxParser(MfmTokenParser.tokenize(""), MfmSyntaxParser.Option())
             .parse()
             .let {
-                assertThat(it).containsExactly()
+                assertEquals(emptyList(), it)
             }
 
         MfmSyntaxParser(MfmTokenParser.tokenize("hoge"), MfmSyntaxParser.Option())
             .parse()
             .let {
-                assertThat(it).containsExactly(
-                    MfmNode.Text("hoge")
+                assertEquals(
+                    listOf(MfmNode.Text("hoge")),
+                    it
                 )
             }
     }
@@ -1955,29 +1956,29 @@ class MfmSyntaxParserTest {
         // $[x2 ] => []
         MfmSyntaxParser(MfmTokenParser.tokenize("$[x2 ]"), option).parse().also {
             val function = it[0] as MfmNode.Function
-            assertThat(function.name).isEqualTo("x2")
-            assertThat(function.args).isEqualTo(emptyMap<String, String>())
+            assertEquals("x2", function.name)
+            assertEquals(emptyMap<String, String>(), function.args)
         }
 
         // $[font.serif ] => [("serif", "")]
         MfmSyntaxParser(MfmTokenParser.tokenize("$[font.serif ]"), option).parse().also {
             val function = it[0] as MfmNode.Function
-            assertThat(function.name).isEqualTo("font")
-            assertThat(function.args).isEqualTo(mapOf("serif" to ""))
+            assertEquals("font", function.name)
+            assertEquals(mapOf("serif" to ""), function.args)
         }
 
         // $[bg.color=00ee22 ] => (["color", "00ee22")]
         MfmSyntaxParser(MfmTokenParser.tokenize("$[bg.color=00ee22 ]"), option).parse().also {
             val function = it[0] as MfmNode.Function
-            assertThat(function.name).isEqualTo("bg")
-            assertThat(function.args).isEqualTo(mapOf("color" to "00ee22"))
+            assertEquals("bg", function.name)
+            assertEquals(mapOf("color" to "00ee22"), function.args)
         }
 
         // $[scale.x=1.2,y=1.5 ] => [("x", "1.2"), ("y", "1.5")]
         MfmSyntaxParser(MfmTokenParser.tokenize("$[scale.x=1.2,y=1.5 :waai:]"), option).parse().also {
             val function = it[0] as MfmNode.Function
-            assertThat(function.name).isEqualTo("scale")
-            assertThat(function.args).isEqualTo(mapOf("x" to "1.2", "y" to "1.5"))
+            assertEquals("scale", function.name)
+            assertEquals(mapOf("x" to "1.2", "y" to "1.5"), function.args)
         }
     }
 
@@ -1985,7 +1986,12 @@ class MfmSyntaxParserTest {
     // custom checker
     //--------------------------------------------------
 
-    private fun checkSyntaxParser(scenarioName: String, inputText: String, option: MfmSyntaxParser.Option, expected: List<MfmNode>) {
+    private fun checkSyntaxParser(
+        scenarioName: String,
+        inputText: String,
+        option: MfmSyntaxParser.Option,
+        expected: List<MfmNode>
+    ) {
 
         val tokens = MfmTokenParser.tokenize(inputText)
         val result = MfmSyntaxParser(tokens, option).parse()
@@ -2002,7 +2008,7 @@ class MfmSyntaxParserTest {
         dump(expected)
         println("---- [$scenarioName] end")
 
-        assertThat(result).containsExactlyElementsOf(expected)
+        assertEquals(expected, result)
     }
 
     private fun dump(it: List<MfmNode>) {
@@ -2018,51 +2024,64 @@ class MfmSyntaxParserTest {
                 is MfmNode.Text -> {
                     println("Text: \"${spr.value.replace("\n", "\\n")}\"")
                 }
+
                 is MfmNode.Quote -> {
                     println("Quote: (${spr.level})")
                     traverse(spr.children, level + 1)
                 }
+
                 is MfmNode.Center -> {
                     println("Center: ")
                     traverse(spr.children, level + 1)
                 }
+
                 is MfmNode.Big -> {
                     println("Big: ")
                     traverse(spr.children, level + 1)
                 }
+
                 is MfmNode.Bold -> {
                     println("Bold: ")
                     traverse(spr.children, level + 1)
                 }
+
                 is MfmNode.Small -> {
                     println("Small: ")
                     traverse(spr.children, level + 1)
                 }
+
                 is MfmNode.Italic -> {
                     println("Italic: ")
                     traverse(spr.children, level + 1)
                 }
+
                 is MfmNode.Strike -> {
                     println("Strike: ")
                     traverse(spr.children, level + 1)
                 }
+
                 is MfmNode.Function -> {
                     println("Function: ${spr.name} ${spr.args.map { "${it.key}=${it.value}" }}")
                     traverse(spr.children, level + 1)
                 }
+
                 is MfmNode.InlineCode -> {
                     println("InlineCode: ")
                     traverse(spr.children, level + 1)
                 }
+
                 is MfmNode.EmojiCode -> {
                     println("EmojiCode: ${spr.value}")
                 }
+
                 is MfmNode.Mention -> {
                     println("Mention: ${spr.value}")
                 }
+
                 is MfmNode.Url -> {
                     println("Url: ${spr.value}")
                 }
+
                 is MfmNode.UrlWithTitle -> {
                     println("UrlWithTitle: ${spr.url}")
                     traverse(spr.children, level + 1)
