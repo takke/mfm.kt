@@ -1,16 +1,59 @@
 plugins {
+    id 'org.jetbrains.kotlin.multiplatform'
     id 'com.android.library'
-    id 'org.jetbrains.kotlin.android'
+}
+
+kotlin {
+    jvmToolchain(11)
+
+    // ターゲットプラットフォームの設定
+    androidTarget {
+        compilations.all {
+            kotlinOptions {
+                jvmTarget = "11"
+            }
+        }
+    }
+
+    jvm {
+        compilations.all {
+            kotlinOptions.jvmTarget = "11"
+        }
+    }
+
+    sourceSets {
+        commonMain {
+            dependencies {
+                // 共通依存関係
+            }
+        }
+
+        commonTest {
+            dependencies {
+                implementation kotlin('test')
+            }
+        }
+
+        androidMain {
+            dependencies {
+                // Android固有の依存関係（現在は不要）
+            }
+        }
+
+        jvmMain {
+            dependencies {
+                // JVM固有の依存関係（現在は不要）
+            }
+        }
+    }
 }
 
 android {
     namespace = 'jp.takke.mfm_kt'
-    compileSdk = 33
+    compileSdk = 34
 
     defaultConfig {
         minSdk = 21
-        targetSdk = 33
-
         consumerProguardFiles "consumer-rules.pro"
     }
 
@@ -20,18 +63,9 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
-}
-
-kotlin {
-    jvmToolchain(11)
-}
-
-dependencies {
-
-    testImplementation 'junit:junit:4.13.2'
-    testImplementation 'org.assertj:assertj-core:3.25.3'
 }
