@@ -21,6 +21,32 @@ kotlin {
         }
     }
 
+    // iOSターゲットの追加
+    iosX64 {
+        binaries {
+            framework {
+                baseName = "mfm_kt"
+                isStatic = true
+            }
+        }
+    }
+    iosArm64 {
+        binaries {
+            framework {
+                baseName = "mfm_kt"
+                isStatic = true
+            }
+        }
+    }
+    iosSimulatorArm64 {
+        binaries {
+            framework {
+                baseName = "mfm_kt"
+                isStatic = true
+            }
+        }
+    }
+
     sourceSets {
         commonMain {
             dependencies {
@@ -44,6 +70,14 @@ kotlin {
             dependencies {
                 // JVM固有の依存関係（現在は不要）
             }
+        }
+
+        iosMain {
+            dependsOn(commonMain)
+        }
+
+        iosTest {
+            dependsOn(commonTest)
         }
     }
 }
