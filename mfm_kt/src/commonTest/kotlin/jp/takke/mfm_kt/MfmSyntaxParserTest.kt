@@ -3,10 +3,12 @@
 package jp.takke.mfm_kt
 
 import jp.takke.mfm_kt.syntax_parser.MfmNode
+import jp.takke.mfm_kt.syntax_parser.MfmParseException
 import jp.takke.mfm_kt.syntax_parser.MfmSyntaxParser
 import jp.takke.mfm_kt.token_parser.MfmTokenParser
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 
 
 class MfmSyntaxParserTest {
@@ -2087,6 +2089,23 @@ class MfmSyntaxParserTest {
                     traverse(spr.children, level + 1)
                 }
             }
+        }
+    }
+
+    /**
+     * バックトラッキング回数制限のテスト
+     * 未対応構文により大量のバックトラッキングが発生するケースで
+     * MfmParseExceptionがスローされることを確認する
+     */
+    @Test
+    fun parse_backtrack_limit_exceeded() {
+        // 大量の未閉じ $[ を含むMFMを生成
+        // $[ が20個、] が1個なので、19個の未閉じタグ
+        // 最悪のケースで O(2^19) のバックトラッキングが発生する可能性がある
+        val manyUnclosedFunctions = "$[a ".repeat(20) + "text]"
+
+        assertFailsWith<MfmParseException> {
+            MfmSyntaxParser(MfmTokenParser.tokenize(manyUnclosedFunctions), optionAll).parse()
         }
     }
 

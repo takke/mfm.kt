@@ -6,13 +6,49 @@ import jp.takke.mfm_kt.token_parser.TokenType
 
 
 /**
+ * MFM構文解析時に発生する例外
+ */
+class MfmParseException(message: String) : RuntimeException(message)
+
+
+/**
  * 構文解析を行い、構文解析木を返す
  */
 class MfmSyntaxParser(tokenizedResult: TokenParseResult, private val option0: Option) {
 
+    companion object {
+        /**
+         * バックトラッキングの最大回数
+         * この回数を超えるとMfmParseExceptionがスローされる
+         * 通常のMFMでは数百回程度のバックトラッキングが発生することがあるため、
+         * 十分大きな値を設定する。ただし、未対応構文による指数関数的な爆発（O(2^n)）を
+         * 防ぐために制限を設けている。
+         */
+        const val MAX_BACKTRACK_COUNT = 10000
+    }
+
     // 解析対象
     private val tokenList = tokenizedResult.holder.tokenList
     private var tokenPos = 0
+
+    // バックトラッキング回数のカウンター
+    private var backtrackCount = 0
+
+    /**
+     * バックトラッキングを行い、回数制限をチェックする
+     * @param savedPos 戻り先の位置
+     * @throws MfmParseException バックトラッキング回数が上限を超えた場合
+     */
+    private fun backtrack(savedPos: Int) {
+        backtrackCount++
+        if (backtrackCount > MAX_BACKTRACK_COUNT) {
+            throw MfmParseException(
+                "バックトラッキング回数が上限($MAX_BACKTRACK_COUNT)を超えました。" +
+                        "パース対象のMFMに未対応の構文が含まれている可能性があります。"
+            )
+        }
+        tokenPos = savedPos
+    }
 
     data class Option(
         val enableQuote: Boolean = true,
@@ -117,7 +153,7 @@ class MfmSyntaxParser(tokenizedResult: TokenParseResult, private val option0: Op
                         // Center が終了しないまま終端に達した
                         nodes.addOrMergeText(token.wholeText)
                         // pos を戻して再度パースする
-                        tokenPos = savedPos
+                        backtrack(savedPos)
                     }
                 }
 
@@ -145,7 +181,7 @@ class MfmSyntaxParser(tokenizedResult: TokenParseResult, private val option0: Op
                             // Big が終了しないまま終端に達した
                             nodes.addOrMergeText(token.wholeText)
                             // pos を戻して再度パースする
-                            tokenPos = savedPos
+                            backtrack(savedPos)
                         }
                     }
                 }
@@ -164,7 +200,7 @@ class MfmSyntaxParser(tokenizedResult: TokenParseResult, private val option0: Op
                             // Bold が終了しないまま終端に達した
                             nodes.addOrMergeText(token.wholeText)
                             // pos を戻して再度パースする
-                            tokenPos = savedPos
+                            backtrack(savedPos)
                         }
                     }
                 }
@@ -179,7 +215,7 @@ class MfmSyntaxParser(tokenizedResult: TokenParseResult, private val option0: Op
                         // Bold が終了しないまま終端に達した
                         nodes.addOrMergeText(token.wholeText)
                         // pos を戻して再度パースする
-                        tokenPos = savedPos
+                        backtrack(savedPos)
                     }
                 }
 
@@ -218,7 +254,7 @@ class MfmSyntaxParser(tokenizedResult: TokenParseResult, private val option0: Op
                             // __ が終了しないまま終端に達した
                             nodes.addOrMergeText(token.wholeText)
                             // pos を戻して再度パースする
-                            tokenPos = savedPos
+                            backtrack(savedPos)
                         }
                     }
                 }
@@ -233,7 +269,7 @@ class MfmSyntaxParser(tokenizedResult: TokenParseResult, private val option0: Op
                         // Small が終了しないまま終端に達した
                         nodes.addOrMergeText(token.wholeText)
                         // pos を戻して再度パースする
-                        tokenPos = savedPos
+                        backtrack(savedPos)
                     }
                 }
 
@@ -257,7 +293,7 @@ class MfmSyntaxParser(tokenizedResult: TokenParseResult, private val option0: Op
                         // Italic が終了しないまま終端に達した
                         nodes.addOrMergeText(token.wholeText)
                         // pos を戻して再度パースする
-                        tokenPos = savedPos
+                        backtrack(savedPos)
                     }
                 }
 
@@ -297,7 +333,7 @@ class MfmSyntaxParser(tokenizedResult: TokenParseResult, private val option0: Op
                             // * が終了しないまま終端に達した
                             nodes.addOrMergeText(token.wholeText)
                             // pos を戻して再度パースする
-                            tokenPos = savedPos
+                            backtrack(savedPos)
                         }
                     }
                 }
@@ -329,7 +365,7 @@ class MfmSyntaxParser(tokenizedResult: TokenParseResult, private val option0: Op
                             nodes.addOrMergeText(token.wholeText)
 
                             // pos を戻して再度パースする
-                            tokenPos = savedPos
+                            backtrack(savedPos)
                         }
                     }
                 }
@@ -344,7 +380,7 @@ class MfmSyntaxParser(tokenizedResult: TokenParseResult, private val option0: Op
                         // Strike が終了しないまま終端に達した
                         nodes.addOrMergeText(token.wholeText)
                         // pos を戻して再度パースする
-                        tokenPos = savedPos
+                        backtrack(savedPos)
                     }
                 }
 
@@ -383,7 +419,7 @@ class MfmSyntaxParser(tokenizedResult: TokenParseResult, private val option0: Op
                             // ~~ が終了しないまま終端に達した
                             nodes.addOrMergeText(token.wholeText)
                             // pos を戻して再度パースする
-                            tokenPos = savedPos
+                            backtrack(savedPos)
                         }
                     }
                 }
@@ -398,7 +434,7 @@ class MfmSyntaxParser(tokenizedResult: TokenParseResult, private val option0: Op
                         // Function が終了しないまま終端に達した
                         nodes.addOrMergeText(token.wholeText)
                         // pos を戻して再度パースする
-                        tokenPos = savedPos
+                        backtrack(savedPos)
                     }
                 }
 
@@ -455,7 +491,7 @@ class MfmSyntaxParser(tokenizedResult: TokenParseResult, private val option0: Op
                             // InlineCode が終了しないまま終端に達した
                             nodes.addOrMergeText(token.wholeText)
                             // pos を戻して再度パースする
-                            tokenPos = savedPos
+                            backtrack(savedPos)
                         }
                     }
                 }
