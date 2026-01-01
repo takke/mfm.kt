@@ -509,16 +509,33 @@ class MfmSyntaxParser(tokenizedResult: TokenParseResult, private val option0: Op
                 }
 
                 TokenType.UrlWithTitle -> {
-                    // token.extractedValue は [title](url) なのでここで分離する
+                    // token.extractedValue は [title](url) または [title](<url>) なのでここで分離する
                     val afterMark = token.extractedValue.substringAfter("[")
                     val title = afterMark.substringBefore("](")
+                    // URLから <> を除去する
                     val url = afterMark.substringAfter("](").substringBefore(")")
+                        .removePrefix("<").removeSuffix(">")
 
                     // title 部分は "hoge**bold**" のようにマークアップを含むことがあるので再度パースする
                     val children = MfmSyntaxParser(MfmTokenParser.tokenize(title),
                         option.copy(enableUrl = false, enableMention = false)
                     ).parse()
                     nodes.add(MfmNode.UrlWithTitle(url, children))
+                }
+
+                TokenType.SilentLink -> {
+                    // token.extractedValue は ?[title](url) または ?[title](<url>) なのでここで分離する
+                    val afterMark = token.extractedValue.substringAfter("?[")
+                    val title = afterMark.substringBefore("](")
+                    // URLから <> を除去する
+                    val url = afterMark.substringAfter("](").substringBefore(")")
+                        .removePrefix("<").removeSuffix(">")
+
+                    // title 部分は "hoge**bold**" のようにマークアップを含むことがあるので再度パースする
+                    val children = MfmSyntaxParser(MfmTokenParser.tokenize(title),
+                        option.copy(enableUrl = false, enableMention = false)
+                    ).parse()
+                    nodes.add(MfmNode.SilentLink(url, children))
                 }
             }
         }
@@ -556,6 +573,7 @@ class MfmSyntaxParser(tokenizedResult: TokenParseResult, private val option0: Op
             TokenType.Mention -> option.enableMention
             TokenType.Url -> option.enableUrl
             TokenType.UrlWithTitle -> option.enableUrl
+            TokenType.SilentLink -> option.enableUrl
         }
     }
 

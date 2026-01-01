@@ -60,6 +60,9 @@ sealed class MfmNode(val isInline: Boolean) {
 
     data class UrlWithTitle(val url: String, val children: List<MfmNode>) : MfmNode(true)
 
+    // ?[title](url) - サイレントリンク（プレビューなしのリンク）
+    data class SilentLink(val url: String, val children: List<MfmNode>) : MfmNode(true)
+
     companion object {
         // vararg version: for test purposes
         internal fun Quote(level: QuoteLevel, vararg children: MfmNode) = Quote(level, children.toList())
@@ -72,6 +75,7 @@ sealed class MfmNode(val isInline: Boolean) {
         fun Function(props: String, vararg children: MfmNode) = Function(props, children.toList())
         internal fun InlineCode(vararg children: MfmNode) = InlineCode(children.toList())
         internal fun UrlWithTitle(url: String, vararg children: MfmNode) = UrlWithTitle(url, children.toList())
+        internal fun SilentLink(url: String, vararg children: MfmNode) = SilentLink(url, children.toList())
     }
 
 }

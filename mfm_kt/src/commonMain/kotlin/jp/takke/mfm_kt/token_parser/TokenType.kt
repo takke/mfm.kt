@@ -62,7 +62,10 @@ enum class TokenType {
     // http
     Url,
 
-    // [title](url)
+    // [title](url) または [title](<url>)
     UrlWithTitle,
+
+    // ?[title](url) または ?[title](<url>)
+    SilentLink,
 
 }

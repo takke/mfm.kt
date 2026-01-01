@@ -2088,8 +2088,67 @@ class MfmSyntaxParserTest {
                     println("UrlWithTitle: ${spr.url}")
                     traverse(spr.children, level + 1)
                 }
+
+                is MfmNode.SilentLink -> {
+                    println("SilentLink: ${spr.url}")
+                    traverse(spr.children, level + 1)
+                }
             }
         }
+    }
+
+    /**
+     * サイレントリンクのテスト
+     */
+    @Test
+    fun parse_silent_link() {
+        // 通常のサイレントリンク
+        checkSyntaxParser(
+            "silent_link_normal",
+            "?[リンク](https://example.com)",
+            optionAll,
+            listOf(
+                MfmNode.SilentLink("https://example.com", MfmNode.Text("リンク"))
+            )
+        )
+
+        // <url>形式のサイレントリンク
+        checkSyntaxParser(
+            "silent_link_angle_brackets",
+            "?[リンク](<https://example.com>)",
+            optionAll,
+            listOf(
+                MfmNode.SilentLink("https://example.com", MfmNode.Text("リンク"))
+            )
+        )
+
+        // サイレントリンクが$[...]の中にある場合
+        checkSyntaxParser(
+            "silent_link_in_function",
+            "$[bg.color=fff ?[link](<https://example.com>)]",
+            optionAll,
+            listOf(
+                MfmNode.Function("bg.color=fff",
+                    MfmNode.SilentLink("https://example.com", MfmNode.Text("link"))
+                )
+            )
+        )
+    }
+
+    /**
+     * UrlWithTitleの<url>形式のテスト
+     */
+    @Test
+    fun parse_url_with_title_angle_brackets() {
+        // <url>形式のUrlWithTitle
+        checkSyntaxParser(
+            "url_with_title_angle_brackets",
+            "[リンク](<https://example.com>)",
+            optionAll,
+            listOf(
+                MfmNode.UrlWithTitle("https://example.com", MfmNode.Text("リンク"))
+            )
+        )
     }
 
     /**

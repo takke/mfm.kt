@@ -176,7 +176,7 @@ object MfmTokenParser {
         )
     }
 
-    // [abc](https://twitpane.com/hoge) のようなパターン
+    // [abc](https://twitpane.com/hoge) または [abc](<https://twitpane.com/hoge>) のようなパターン
     val pUrlWithTitle: () -> TokenParser = {
         pRegex(
             TokenType.UrlWithTitle,
@@ -186,7 +186,28 @@ object MfmTokenParser {
                     "[^\n\\]]+" +
                     "\\]" +
                     "\\(" +
-                    "(https?://[${URL_C}]+)" +
+                    "<?(" +  // オプションの < を追加
+                    "https?://[${URL_C}]+" +
+                    ")>?" +  // オプションの > を追加
+                    "\\)" +
+                    ")"
+                    ).toRegex()
+        )
+    }
+
+    // ?[abc](https://twitpane.com/hoge) または ?[abc](<https://twitpane.com/hoge>) のようなパターン（サイレントリンク）
+    val pSilentLink: () -> TokenParser = {
+        pRegex(
+            TokenType.SilentLink,
+            ("^" +
+                    "(" +
+                    "\\?\\[" +  // ?[ で開始
+                    "[^\n\\]]+" +
+                    "\\]" +
+                    "\\(" +
+                    "<?(" +  // オプションの < を追加
+                    "https?://[${URL_C}]+" +
+                    ")>?" +  // オプションの > を追加
                     "\\)" +
                     ")"
                     ).toRegex()
@@ -224,6 +245,8 @@ object MfmTokenParser {
                 pMention() or
                 // http
                 pUrl() or
+                // "?[title](url)" - サイレントリンク（UrlWithTitleより先にマッチさせる）
+                pSilentLink() or
                 // "[title](url)"
                 pUrlWithTitle() or
                 // "`"
