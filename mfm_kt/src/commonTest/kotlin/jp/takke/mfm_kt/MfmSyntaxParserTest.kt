@@ -551,14 +551,66 @@ class MfmSyntaxParserTest {
             )
         )
 
+        // 閉じ:の直後に半角英字があるのでカスタム絵文字として認識しない
         checkSyntaxParser(
             "emoji2",
             "aaa:hoge:bbb",
             MfmSyntaxParser.Option(),
             listOf(
-                MfmNode.Text("aaa"),
+                MfmNode.Text("aaa:hoge:bbb"),
+            )
+        )
+
+        // 閉じ:の直後が全角文字なのでカスタム絵文字として認識する
+        checkSyntaxParser(
+            "emoji3 全角文字",
+            ":hoge:あいう",
+            MfmSyntaxParser.Option(),
+            listOf(
                 MfmNode.EmojiCode(":hoge:"),
-                MfmNode.Text("bbb"),
+                MfmNode.Text("あいう"),
+            )
+        )
+
+        // 閉じ:の直後が半角英字なのでカスタム絵文字として認識しない
+        checkSyntaxParser(
+            "emoji4 半角英字",
+            ":hoge:abc",
+            MfmSyntaxParser.Option(),
+            listOf(
+                MfmNode.Text(":hoge:abc"),
+            )
+        )
+
+        // 閉じ:の直後が半角数字なのでカスタム絵文字として認識しない
+        checkSyntaxParser(
+            "emoji5 半角数字",
+            ":hoge:1",
+            MfmSyntaxParser.Option(),
+            listOf(
+                MfmNode.Text(":hoge:1"),
+            )
+        )
+
+        // 閉じ:の直後が全角数字なのでカスタム絵文字として認識する
+        checkSyntaxParser(
+            "emoji6 全角数字",
+            ":hoge:１",
+            MfmSyntaxParser.Option(),
+            listOf(
+                MfmNode.EmojiCode(":hoge:"),
+                MfmNode.Text("１"),
+            )
+        )
+
+        // 閉じ:の直後がスペースなのでカスタム絵文字として認識する
+        checkSyntaxParser(
+            "emoji7 スペース",
+            ":hoge: text",
+            MfmSyntaxParser.Option(),
+            listOf(
+                MfmNode.EmojiCode(":hoge:"),
+                MfmNode.Text(" text"),
             )
         )
     }

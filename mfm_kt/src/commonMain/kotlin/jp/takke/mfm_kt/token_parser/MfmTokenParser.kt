@@ -154,7 +154,8 @@ object MfmTokenParser {
     // `$abc <- 1` のような形式
     val pInlineCode: () -> TokenParser = { pWord(TokenType.InlineCode, "`") }
 
-    val pEmojiCode: () -> TokenParser = { pRegex(TokenType.EmojiCode, "^(:[a-zA-Z0-9_+-]+:)".toRegex()) }
+    // 閉じ:の直後に半角英数がある場合はマッチしない
+    val pEmojiCode: () -> TokenParser = { pRegex(TokenType.EmojiCode, "^(:[a-zA-Z0-9_+-]+:)(?![a-zA-Z0-9])".toRegex()) }
 
     val pMention: () -> TokenParser = { pRegex(TokenType.Mention, "^(@[a-zA-Z0-9_-]+(@[.a-zA-Z0-9_-]+)?)".toRegex()) }
 
