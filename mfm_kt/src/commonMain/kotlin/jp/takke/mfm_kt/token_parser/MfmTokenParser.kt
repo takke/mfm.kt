@@ -157,7 +157,72 @@ object MfmTokenParser {
     // 閉じ:の直後に半角英数がある場合はマッチしない
     val pEmojiCode: () -> TokenParser = { pRegex(TokenType.EmojiCode, "^(:[a-zA-Z0-9_+-]+:)(?![a-zA-Z0-9])".toRegex()) }
 
-    val pMention: () -> TokenParser = { pRegex(TokenType.Mention, "^(@[a-zA-Z0-9_-]+(@[.a-zA-Z0-9_-]+)?)".toRegex()) }
+    // mfm.js 互換のメンションパーサー
+    // ユーザー名・ホスト名にドットを許可し、末尾/先頭の [.-] をバリデーションする
+    private val mentionRegex = Regex("^@([a-zA-Z0-9_.-]+)(@([a-zA-Z0-9_.-]+))?")
+    private val trailingDotHyphenRegex = Regex("[.-]+$")
+
+    val pMention: () -> TokenParser = {
+        { text, holder ->
+            val m = mentionRegex.find(text)
+            if (m == null) {
+                toNGParseResult(text)
+            } else {
+                // 直前が半角英数字の場合はメンションとして認識しない（メールアドレス対策）
+                val lastToken = holder.tokenList.lastOrNull()
+                val lastChar = lastToken?.extractedValue?.lastOrNull()
+                if (lastChar != null && (lastChar in 'a'..'z' || lastChar in 'A'..'Z' || lastChar in '0'..'9')) {
+                    toNGParseResult(text)
+                } else {
+                    var username = m.groupValues[1]
+                    var hostname: String? = m.groupValues[3].ifEmpty { null }
+                    var invalidMention = false
+
+                    // ホスト名末尾の [.-] を除去
+                    if (hostname != null) {
+                        val trimmed = hostname.replace(trailingDotHyphenRegex, "")
+                        if (trimmed.isEmpty()) {
+                            invalidMention = true
+                            hostname = null
+                        } else {
+                            hostname = trimmed
+                        }
+                    }
+
+                    // ユーザー名末尾の [.-] を除去
+                    val userTailMatch = trailingDotHyphenRegex.find(username)
+                    if (userTailMatch != null) {
+                        if (hostname == null) {
+                            username = username.substring(0, username.length - userTailMatch.value.length)
+                        } else {
+                            invalidMention = true
+                        }
+                    }
+
+                    // ユーザー名先頭の [.-] を不許可
+                    if (username.isEmpty() || username[0] == '.' || username[0] == '-') {
+                        invalidMention = true
+                    }
+
+                    // ホスト名先頭の [.-] を不許可
+                    if (hostname != null && (hostname[0] == '.' || hostname[0] == '-')) {
+                        invalidMention = true
+                    }
+
+                    if (invalidMention) {
+                        toNGParseResult(text)
+                    } else {
+                        val acct = if (hostname != null) "@$username@$hostname" else "@$username"
+                        TokenParseResult(
+                            true,
+                            holder.append(Token(TokenType.Mention, acct)),
+                            text.substring(acct.length)
+                        )
+                    }
+                }
+            }
+        }
+    }
 
     private const val URL_C = ".,a-zA-Z0-9_/:%#@\$&?!~=+-"
     private const val URL_TAIL_C = "a-zA-Z0-9_/:%#@\$&?!~=+-"   // 末尾は ",." 不可

@@ -635,6 +635,48 @@ class MfmSyntaxParserTest {
                 MfmNode.Mention("@hoge@fuga"),
             )
         )
+
+        // ドット入りユーザー名
+        checkSyntaxParser(
+            "mention: ドット入りユーザー名",
+            "@bskyphotos.bsky.social@bsky.brid.gy",
+            optionAll,
+            listOf(
+                MfmNode.Mention("@bskyphotos.bsky.social@bsky.brid.gy"),
+            )
+        )
+
+        // ユーザー名末尾のドットを除去
+        checkSyntaxParser(
+            "mention: ユーザー名末尾のドットを除去",
+            "@abc.",
+            optionAll,
+            listOf(
+                MfmNode.Mention("@abc"),
+                MfmNode.Text("."),
+            )
+        )
+
+        // ホスト名末尾のドットを除去
+        checkSyntaxParser(
+            "mention: ホスト名末尾のドットを除去",
+            "@abc@aaa.",
+            optionAll,
+            listOf(
+                MfmNode.Mention("@abc@aaa"),
+                MfmNode.Text("."),
+            )
+        )
+
+        // メールアドレス形式は無視
+        checkSyntaxParser(
+            "mention: メールアドレス形式は無視",
+            "abc@example.com",
+            optionAll,
+            listOf(
+                MfmNode.Text("abc@example.com"),
+            )
+        )
     }
 
     @Test

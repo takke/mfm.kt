@@ -610,6 +610,266 @@ class MfmTokenParserTest {
             }
     }
 
+    //--------------------------------------------------
+    // メンション (mfm.js 互換テストケース)
+    //--------------------------------------------------
+
+    @Test
+    fun tokenize_Mention_basic() {
+        // @abc → メンションとして認識
+        MfmTokenParser.tokenize("@abc")
+            .let {
+                assertTrue(it.success)
+                assertEquals(
+                    listOf(
+                        Token.mention("@abc")
+                    ), it.holder.tokenList
+                )
+            }
+    }
+
+    @Test
+    fun tokenize_Mention_basic2() {
+        // before @abc after → テキスト + メンション + テキスト
+        MfmTokenParser.tokenize("before @abc after")
+            .let {
+                assertTrue(it.success)
+                assertEquals(
+                    listOf(
+                        Token.string("before "),
+                        Token.mention("@abc"),
+                        Token.string(" after")
+                    ), it.holder.tokenList
+                )
+            }
+    }
+
+    @Test
+    fun tokenize_Mention_basicRemote() {
+        // @abc@misskey.io → リモートメンション
+        MfmTokenParser.tokenize("@abc@misskey.io")
+            .let {
+                assertTrue(it.success)
+                assertEquals(
+                    listOf(
+                        Token.mention("@abc@misskey.io")
+                    ), it.holder.tokenList
+                )
+            }
+    }
+
+    @Test
+    fun tokenize_Mention_メールアドレス形式は無視() {
+        // abc@example.com → メンションとして認識しない
+        MfmTokenParser.tokenize("abc@example.com")
+            .let {
+                assertTrue(it.success)
+                assertEquals(
+                    listOf(
+                        Token.string("abc@example.com")
+                    ), it.holder.tokenList
+                )
+            }
+    }
+
+    @Test
+    fun tokenize_Mention_日本語の後のメンション() {
+        // あいう@abc → 日本語のあとのメンションは認識する
+        MfmTokenParser.tokenize("あいう@abc")
+            .let {
+                assertTrue(it.success)
+                assertEquals(
+                    listOf(
+                        Token.string("あいう"),
+                        Token.mention("@abc")
+                    ), it.holder.tokenList
+                )
+            }
+    }
+
+    @Test
+    fun tokenize_Mention_ユーザー名にハイフンを許可() {
+        MfmTokenParser.tokenize("@abc-d")
+            .let {
+                assertTrue(it.success)
+                assertEquals(
+                    listOf(
+                        Token.mention("@abc-d")
+                    ), it.holder.tokenList
+                )
+            }
+    }
+
+    @Test
+    fun tokenize_Mention_ユーザー名にドットを許可() {
+        // ドット入りユーザー名 + ホスト名
+        MfmTokenParser.tokenize("@bsky.brid.gy@bsky.brid.gy")
+            .let {
+                assertTrue(it.success)
+                assertEquals(
+                    listOf(
+                        Token.mention("@bsky.brid.gy@bsky.brid.gy")
+                    ), it.holder.tokenList
+                )
+            }
+    }
+
+    @Test
+    fun tokenize_Mention_報告バグケース() {
+        // 報告されたバグ: @bskyphotos.bsky.social@bsky.brid.gy が分割される
+        MfmTokenParser.tokenize("@bskyphotos.bsky.social@bsky.brid.gy")
+            .let {
+                assertTrue(it.success)
+                assertEquals(
+                    listOf(
+                        Token.mention("@bskyphotos.bsky.social@bsky.brid.gy")
+                    ), it.holder.tokenList
+                )
+            }
+    }
+
+    @Test
+    fun tokenize_Mention_不正な文字のみのユーザー名() {
+        // @- → メンションとして認識しない
+        MfmTokenParser.tokenize("@-")
+            .let {
+                assertTrue(it.success)
+                assertEquals(
+                    listOf(
+                        Token.string("@-")
+                    ), it.holder.tokenList
+                )
+            }
+    }
+
+    @Test
+    fun tokenize_Mention_不正な文字のみのホスト名() {
+        // @abc@. → メンションとして認識しない
+        MfmTokenParser.tokenize("@abc@.")
+            .let {
+                assertTrue(it.success)
+                assertEquals(
+                    listOf(
+                        Token.string("@abc@.")
+                    ), it.holder.tokenList
+                )
+            }
+    }
+
+    @Test
+    fun tokenize_Mention_ユーザー名先頭のハイフンを不許可() {
+        MfmTokenParser.tokenize("@-abc")
+            .let {
+                assertTrue(it.success)
+                assertEquals(
+                    listOf(
+                        Token.string("@-abc")
+                    ), it.holder.tokenList
+                )
+            }
+    }
+
+    @Test
+    fun tokenize_Mention_ユーザー名末尾のハイフンを除去() {
+        // @abc- → Mention(@abc) + テキスト(-)
+        MfmTokenParser.tokenize("@abc-")
+            .let {
+                assertTrue(it.success)
+                assertEquals(
+                    listOf(
+                        Token.mention("@abc"),
+                        Token.string("-")
+                    ), it.holder.tokenList
+                )
+            }
+    }
+
+    @Test
+    fun tokenize_Mention_ユーザー名先頭のドットを不許可() {
+        MfmTokenParser.tokenize("@.abc")
+            .let {
+                assertTrue(it.success)
+                assertEquals(
+                    listOf(
+                        Token.string("@.abc")
+                    ), it.holder.tokenList
+                )
+            }
+    }
+
+    @Test
+    fun tokenize_Mention_ユーザー名末尾のドットを除去() {
+        // @abc. → Mention(@abc) + テキスト(.)
+        MfmTokenParser.tokenize("@abc.")
+            .let {
+                assertTrue(it.success)
+                assertEquals(
+                    listOf(
+                        Token.mention("@abc"),
+                        Token.string(".")
+                    ), it.holder.tokenList
+                )
+            }
+    }
+
+    @Test
+    fun tokenize_Mention_ホスト名先頭のドットを不許可() {
+        // @abc@.aaa → メンションとして認識しない
+        MfmTokenParser.tokenize("@abc@.aaa")
+            .let {
+                assertTrue(it.success)
+                assertEquals(
+                    listOf(
+                        Token.string("@abc@.aaa")
+                    ), it.holder.tokenList
+                )
+            }
+    }
+
+    @Test
+    fun tokenize_Mention_ホスト名末尾のドットを除去() {
+        // @abc@aaa. → Mention(@abc@aaa) + テキスト(.)
+        MfmTokenParser.tokenize("@abc@aaa.")
+            .let {
+                assertTrue(it.success)
+                assertEquals(
+                    listOf(
+                        Token.mention("@abc@aaa"),
+                        Token.string(".")
+                    ), it.holder.tokenList
+                )
+            }
+    }
+
+    @Test
+    fun tokenize_Mention_ホスト名先頭のハイフンを不許可() {
+        // @abc@-aaa → メンションとして認識しない
+        MfmTokenParser.tokenize("@abc@-aaa")
+            .let {
+                assertTrue(it.success)
+                assertEquals(
+                    listOf(
+                        Token.string("@abc@-aaa")
+                    ), it.holder.tokenList
+                )
+            }
+    }
+
+    @Test
+    fun tokenize_Mention_ホスト名末尾のハイフンを除去() {
+        // @abc@aaa- → Mention(@abc@aaa) + テキスト(-)
+        MfmTokenParser.tokenize("@abc@aaa-")
+            .let {
+                assertTrue(it.success)
+                assertEquals(
+                    listOf(
+                        Token.mention("@abc@aaa"),
+                        Token.string("-")
+                    ), it.holder.tokenList
+                )
+            }
+    }
+
     @Test
     fun tokenize_InlineCode() {
 
