@@ -177,6 +177,10 @@ $[x2 なにか]
                     ssb.append("SilentLink: ${spr.url}\n")
                     traverse(spr.children, level + 1, ssb)
                 }
+                is MfmNode.Plain -> {
+                    ssb.append("Plain: \n")
+                    traverse(spr.children, level + 1, ssb)
+                }
             }
         }
     }
