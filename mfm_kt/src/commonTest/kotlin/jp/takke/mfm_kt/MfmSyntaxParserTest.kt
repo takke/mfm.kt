@@ -51,6 +51,7 @@ class MfmSyntaxParserTest {
             enableEmoji = false,
             enableMention = false,
             enableUrl = false,
+            enablePlain = false,
         )
 
         checkSyntaxParser(
@@ -2161,6 +2162,11 @@ class MfmSyntaxParserTest {
                     traverse(spr.children, level + 1)
                 }
 
+                is MfmNode.Plain -> {
+                    println("Plain: ")
+                    traverse(spr.children, level + 1)
+                }
+
                 is MfmNode.InlineCode -> {
                     println("InlineCode: ")
                     traverse(spr.children, level + 1)
@@ -2241,6 +2247,105 @@ class MfmSyntaxParserTest {
             optionAll,
             listOf(
                 MfmNode.UrlWithTitle("https://example.com", MfmNode.Text("リンク"))
+            )
+        )
+    }
+
+    @Test
+    fun parse_plain_基本() {
+        // 基本: <plain>text</plain> → Plain(Text("text"))
+        checkSyntaxParser(
+            "plain basic",
+            "<plain>text</plain>",
+            optionAll,
+            listOf(
+                MfmNode.Plain(MfmNode.Text("text"))
+            )
+        )
+    }
+
+    @Test
+    fun parse_plain_MFM無効化() {
+        // <plain>内のMFM書式が無効化されること
+        checkSyntaxParser(
+            "plain disables bold",
+            "<plain>**bold**</plain>",
+            optionAll,
+            listOf(
+                MfmNode.Plain(MfmNode.Text("**bold**"))
+            )
+        )
+
+        checkSyntaxParser(
+            "plain disables italic",
+            "<plain><i>italic</i></plain>",
+            optionAll,
+            listOf(
+                MfmNode.Plain(MfmNode.Text("<i>italic</i>"))
+            )
+        )
+
+        checkSyntaxParser(
+            "plain disables function",
+            "<plain>\$[x2 big]</plain>",
+            optionAll,
+            listOf(
+                MfmNode.Plain(MfmNode.Text("\$[x2 big]"))
+            )
+        )
+    }
+
+    @Test
+    fun parse_plain_前後テキスト混在() {
+        // 前後にテキストがある場合
+        checkSyntaxParser(
+            "plain with surrounding text",
+            "before<plain>**text**</plain>after",
+            optionAll,
+            listOf(
+                MfmNode.Text("before"),
+                MfmNode.Plain(MfmNode.Text("**text**")),
+                MfmNode.Text("after"),
+            )
+        )
+    }
+
+    @Test
+    fun parse_plain_未閉じ() {
+        // 閉じタグがない場合はフォールバック
+        checkSyntaxParser(
+            "plain unclosed",
+            "<plain>text",
+            optionAll,
+            listOf(
+                MfmNode.Text("<plain>text")
+            )
+        )
+    }
+
+    @Test
+    fun parse_plain_空() {
+        // 空のplain
+        checkSyntaxParser(
+            "plain empty",
+            "<plain></plain>",
+            optionAll,
+            listOf(
+                MfmNode.Plain()
+            )
+        )
+    }
+
+    @Test
+    fun parse_plain_option無効() {
+        // enablePlain=false の場合はそのままテキストになる
+        val option = optionAll.copy(enablePlain = false)
+        checkSyntaxParser(
+            "plain disabled",
+            "<plain>text</plain>",
+            option,
+            listOf(
+                MfmNode.Text("<plain>text</plain>")
             )
         )
     }

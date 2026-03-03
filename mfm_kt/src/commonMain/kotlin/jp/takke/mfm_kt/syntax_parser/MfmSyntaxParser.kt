@@ -63,6 +63,7 @@ class MfmSyntaxParser(tokenizedResult: TokenParseResult, private val option0: Op
         val enableEmoji: Boolean = true,
         val enableMention: Boolean = true,
         val enableUrl: Boolean = true,
+        val enablePlain: Boolean = true,
     )
 
     fun parse(): List<MfmNode> {
@@ -84,6 +85,7 @@ class MfmSyntaxParser(tokenizedResult: TokenParseResult, private val option0: Op
         StrikeWave,
         Function,
         InlineCode,
+        Plain,
     }
 
     private data class ParseResult(
@@ -537,6 +539,47 @@ class MfmSyntaxParser(tokenizedResult: TokenParseResult, private val option0: Op
                     ).parse()
                     nodes.add(MfmNode.SilentLink(url, children))
                 }
+
+                TokenType.PlainStart -> {
+                    // Plain 開始
+                    val savedPos = tokenPos
+
+                    // Plain の間は全Optionを無効化して PlainEnd だけ検出可能にする
+                    val optionPlainOnly = Option(
+                        enableQuote = false,
+                        enableCenter = false,
+                        enableBig = false,
+                        enableBold = false,
+                        enableSmall = false,
+                        enableItalic = false,
+                        enableStrike = false,
+                        enableFunction = false,
+                        enableInline = false,
+                        enableEmoji = false,
+                        enableMention = false,
+                        enableUrl = false,
+                        enablePlain = true,
+                    )
+                    val plainResult = parse(ParseState.Plain, optionPlainOnly, depth + 1)
+                    if (plainResult.success) {
+                        nodes.add(MfmNode.Plain(plainResult.nodes))
+                    } else {
+                        // Plain が終了しないまま終端に達した
+                        nodes.addOrMergeText(token.wholeText)
+                        // pos を戻して再度パースする
+                        backtrack(savedPos)
+                    }
+                }
+
+                TokenType.PlainEnd -> {
+                    // Plain 終了
+                    if (state == ParseState.Plain) {
+                        return ParseResult(true, nodes)
+                    } else {
+                        // <plain>じゃないところで</plain>が来たので無視する
+                        nodes.addOrMergeText(token.wholeText)
+                    }
+                }
             }
         }
 
@@ -574,6 +617,8 @@ class MfmSyntaxParser(tokenizedResult: TokenParseResult, private val option0: Op
             TokenType.Url -> option.enableUrl
             TokenType.UrlWithTitle -> option.enableUrl
             TokenType.SilentLink -> option.enableUrl
+            TokenType.PlainStart -> option.enablePlain
+            TokenType.PlainEnd -> option.enablePlain
         }
     }
 

@@ -20,6 +20,8 @@ data class Token(
         fun boldUnder() = Token(TokenType.BoldUnder, "__")
         fun smallStart() = Token(TokenType.SmallStart, "<small>")
         fun smallEnd() = Token(TokenType.SmallEnd, "</small>")
+        fun plainStart() = Token(TokenType.PlainStart, "<plain>")
+        fun plainEnd() = Token(TokenType.PlainEnd, "</plain>")
         fun italicTagStart() = Token(TokenType.ItalicTagStart, "<i>")
         fun italicTagEnd() = Token(TokenType.ItalicTagEnd, "</i>")
         fun italicAsta() = Token(TokenType.ItalicAsta, "*")

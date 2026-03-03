@@ -68,4 +68,7 @@ enum class TokenType {
     // ?[title](url) または ?[title](<url>)
     SilentLink,
 
+    // <plain>...</plain>
+    PlainStart, PlainEnd,
+
 }

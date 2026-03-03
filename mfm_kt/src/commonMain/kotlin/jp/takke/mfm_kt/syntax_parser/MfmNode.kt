@@ -50,6 +50,8 @@ sealed class MfmNode(val isInline: Boolean) {
         }
     }
 
+    data class Plain(val children: List<MfmNode>) : MfmNode(false)
+
     data class InlineCode(val children: List<MfmNode>) : MfmNode(true)
 
     data class EmojiCode(val value: String) : MfmNode(true)
@@ -73,6 +75,7 @@ sealed class MfmNode(val isInline: Boolean) {
         fun Italic(vararg children: MfmNode) = Italic(children.toList())
         internal fun Strike(vararg children: MfmNode) = Strike(children.toList())
         fun Function(props: String, vararg children: MfmNode) = Function(props, children.toList())
+        internal fun Plain(vararg children: MfmNode) = Plain(children.toList())
         internal fun InlineCode(vararg children: MfmNode) = InlineCode(children.toList())
         internal fun UrlWithTitle(url: String, vararg children: MfmNode) = UrlWithTitle(url, children.toList())
         internal fun SilentLink(url: String, vararg children: MfmNode) = SilentLink(url, children.toList())

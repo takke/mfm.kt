@@ -887,5 +887,36 @@ class MfmTokenParserTest {
             }
     }
 
+    @Test
+    fun tokenize_Plain() {
+
+        MfmTokenParser.tokenize("<plain>text</plain>")
+            .let {
+                assertTrue(it.success)
+                assertEquals(
+                    listOf(
+                        Token.plainStart(),
+                        Token.string("text"),
+                        Token.plainEnd()
+                    ), it.holder.tokenList
+                )
+            }
+
+        // <plain>内にMFM構文がある場合もトークンとしては個別に認識される
+        MfmTokenParser.tokenize("<plain>**bold**</plain>")
+            .let {
+                assertTrue(it.success)
+                assertEquals(
+                    listOf(
+                        Token.plainStart(),
+                        Token(TokenType.BoldAsta, "**"),
+                        Token.string("bold"),
+                        Token(TokenType.BoldAsta, "**"),
+                        Token.plainEnd()
+                    ), it.holder.tokenList
+                )
+            }
+    }
+
 
 }

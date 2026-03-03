@@ -154,6 +154,9 @@ object MfmTokenParser {
     // `$abc <- 1` のような形式
     val pInlineCode: () -> TokenParser = { pWord(TokenType.InlineCode, "`") }
 
+    val pPlainStart: () -> TokenParser = { pWord(TokenType.PlainStart, "<plain>") }
+    val pPlainEnd: () -> TokenParser = { pWord(TokenType.PlainEnd, "</plain>") }
+
     // 閉じ:の直後に半角英数がある場合はマッチしない
     val pEmojiCode: () -> TokenParser = { pRegex(TokenType.EmojiCode, "^(:[a-zA-Z0-9_+-]+:)(?![a-zA-Z0-9])".toRegex()) }
 
@@ -295,6 +298,8 @@ object MfmTokenParser {
                 pBoldUnder() or
                 // "<small>"
                 pSmallStart() or pSmallEnd() or
+                // "<plain>"
+                pPlainStart() or pPlainEnd() or
                 // "<i>"
                 pItalicTagStart() or pItalicTagEnd() or
                 // "*"
