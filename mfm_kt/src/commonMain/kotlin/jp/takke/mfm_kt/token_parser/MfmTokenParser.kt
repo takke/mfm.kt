@@ -148,7 +148,8 @@ object MfmTokenParser {
     val pStrikeWave: () -> TokenParser = { pWord(TokenType.StrikeWave, "~~") }
 
     // $[shake ...] のような形式のうち $[shake まで。
-    val pFunctionStart: () -> TokenParser = { pRegex(TokenType.FunctionStart, "^\\$\\[([$ANY_ASCII_WITHOUT_SPACE_CLS]+) ".toRegex()) }
+    // バックティック(`)をFunction名から除外する（InlineCode構文と干渉するため）
+    val pFunctionStart: () -> TokenParser = { pRegex(TokenType.FunctionStart, "^\\$\\[([^`\\s]+) ".toRegex()) }
     val pFunctionEnd: () -> TokenParser = { pWord(TokenType.FunctionEnd, "]") }
 
     // `$abc <- 1` のような形式

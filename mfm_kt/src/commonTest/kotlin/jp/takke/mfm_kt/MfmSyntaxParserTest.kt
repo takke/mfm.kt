@@ -1185,6 +1185,31 @@ class MfmSyntaxParserTest {
                 MfmNode.Text("`foo´bar`")
             )
         )
+
+        // バックティックを含む Function 構文がインラインコード内に来た場合に正しく解析できること
+        // `$[ruby` はインラインコード: `$[ruby` として解析される（pFunctionStart がバックティックを取り込まないこと）
+        checkSyntaxParser(
+            "InlineCode containing function start pattern",
+            "`\$[ruby`",
+            optionAll,
+            listOf(
+                MfmNode.InlineCode(
+                    MfmNode.Text("\$[ruby")
+                ),
+            )
+        )
+
+        // バックティックで囲まれたルビ構文がInlineCodeとして正しく解析されること
+        checkSyntaxParser(
+            "InlineCode containing full ruby function",
+            "`\$[ruby ひよこ しゅぶ]`",
+            optionAll,
+            listOf(
+                MfmNode.InlineCode(
+                    MfmNode.Text("\$[ruby ひよこ しゅぶ]")
+                ),
+            )
+        )
     }
 
     // https://github.com/misskey-dev/mfm.js/blob/develop/test/parser.ts#L906
