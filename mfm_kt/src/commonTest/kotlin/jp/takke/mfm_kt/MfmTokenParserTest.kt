@@ -419,6 +419,160 @@ class MfmTokenParserTest {
     }
 
     @Test
+    fun tokenize_Url_括弧付き() {
+
+        // 末尾が "(xxx)" のパターン
+        MfmTokenParser.tokenize("https://twitpane.com/hoge(abc)")
+            .let {
+                assertTrue(it.success)
+                assertEquals(
+                    listOf(
+                        Token.url("https://twitpane.com/hoge(abc)")
+                    ), it.holder.tokenList
+                )
+            }
+
+        // "(xxx)" の後に続きがあるパターン
+        MfmTokenParser.tokenize("https://twitpane.com/hoge(abc)def")
+            .let {
+                assertTrue(it.success)
+                assertEquals(
+                    listOf(
+                        Token.url("https://twitpane.com/hoge(abc)def")
+                    ), it.holder.tokenList
+                )
+            }
+
+        // 閉じられていない括弧は URL に含めない
+        MfmTokenParser.tokenize("https://twitpane.com/hoge(abc")
+            .let {
+                assertTrue(it.success)
+                assertEquals(
+                    listOf(
+                        Token.url("https://twitpane.com/hoge"),
+                        Token.string("(abc")
+                    ), it.holder.tokenList
+                )
+            }
+    }
+
+    @Test
+    fun tokenize_Url_末尾記号() {
+
+        // 末尾の "." は URL に含めない
+        MfmTokenParser.tokenize("https://twitpane.com/hoge.")
+            .let {
+                assertTrue(it.success)
+                assertEquals(
+                    listOf(
+                        Token.url("https://twitpane.com/hoge"),
+                        Token.string(".")
+                    ), it.holder.tokenList
+                )
+            }
+
+        // 末尾の "," は URL に含めない
+        MfmTokenParser.tokenize("https://twitpane.com/hoge,")
+            .let {
+                assertTrue(it.success)
+                assertEquals(
+                    listOf(
+                        Token.url("https://twitpane.com/hoge"),
+                        Token.string(",")
+                    ), it.holder.tokenList
+                )
+            }
+    }
+
+    @Test
+    fun tokenize_Url_マッチしないパターン() {
+
+        // スキームのみ
+        MfmTokenParser.tokenize("https://")
+            .let {
+                assertTrue(it.success)
+                assertEquals(
+                    listOf(
+                        Token.string("https://")
+                    ), it.holder.tokenList
+                )
+            }
+
+        // スキーム以降が1文字 (旧正規表現は本体+末尾の2要素が必須のためマッチしない)
+        MfmTokenParser.tokenize("https://a")
+            .let {
+                assertTrue(it.success)
+                assertEquals(
+                    listOf(
+                        Token.string("https://a")
+                    ), it.holder.tokenList
+                )
+            }
+
+        // 全体が単独の "(...)" ブロックのみ (旧正規表現は本体+末尾に分割できないためマッチしない)
+        MfmTokenParser.tokenize("https://(ab)")
+            .let {
+                assertTrue(it.success)
+                assertEquals(
+                    listOf(
+                        Token.string("https://(ab)")
+                    ), it.holder.tokenList
+                )
+            }
+    }
+
+    @Test
+    fun tokenize_Url_旧実装でハングする長い入力() {
+
+        // 旧実装(入れ子量指定子の正規表現)では指数的バックトラックでハング・クラッシュしていたパターン
+        val dots = ".".repeat(10000)
+        MfmTokenParser.tokenize("https://$dots")
+            .let {
+                assertTrue(it.success)
+                assertEquals(
+                    listOf(
+                        Token.string("https://$dots")
+                    ), it.holder.tokenList
+                )
+            }
+
+        // 長いURLそのもの (こちらはマッチする)
+        val longPath = "a".repeat(10000)
+        MfmTokenParser.tokenize("https://twitpane.com/$longPath")
+            .let {
+                assertTrue(it.success)
+                assertEquals(
+                    listOf(
+                        Token.url("https://twitpane.com/$longPath")
+                    ), it.holder.tokenList
+                )
+            }
+    }
+
+    @Test
+    fun tokenize_長文でもスタックオーバーフローしないこと() {
+
+        // 旧実装は many がトークン数に比例して再帰するため、長文でスタックオーバーフローしていた
+        val longText = "あいうえお".repeat(2000) // 10,000文字
+        MfmTokenParser.tokenize(longText)
+            .let {
+                assertTrue(it.success)
+                assertEquals(
+                    listOf(
+                        Token.string(longText)
+                    ), it.holder.tokenList
+                )
+            }
+
+        // トークン数が多いパターン
+        MfmTokenParser.tokenize("*a".repeat(3000))
+            .let {
+                assertTrue(it.success)
+                assertEquals(6000, it.holder.tokenList.size)
+            }
+    }
+
+    @Test
     fun tokenize_UrlWithTitle() {
 
         MfmTokenParser.tokenize("[ai](https://misskey.io/@ai)")

@@ -63,17 +63,27 @@ object MfmTokenParser {
 
     private fun many(parser: TokenParser): TokenParser {
         return { text, holder ->
-            val parseResult = parser(text, holder)
-            if (!parseResult.success) {
-                TokenParseResult(true, holder, text)
-            } else {
-//                println("*many, next[${parseResult.next}], result[${parseResult.result}]")
-                many(parser)(parseResult.next, parseResult.holder)
+            // 再帰で書くとトークン数に比例してスタックが深くなり、
+            // 長文でスタックオーバーフローする(特にiOSのメインスレッドはスタックが小さい)ためループで処理する
+            var currentText = text
+            var currentHolder = holder
+            while (true) {
+                val parseResult = parser(currentText, currentHolder)
+                if (!parseResult.success) {
+                    break
+                }
+                val consumed = currentText.length - parseResult.next.length
+                currentText = parseResult.next
+                currentHolder = parseResult.holder
+                if (consumed <= 0) {
+                    // 消費のない成功は無限ループになるため打ち切る(安全弁)
+                    break
+                }
             }
+            TokenParseResult(true, currentHolder, currentText)
         }
     }
 
-    private val EMPTY_HOLDER = TokenHolder(emptyList())
 
     val pAnyChar: () -> TokenParser = {
         { text, holder ->
@@ -105,9 +115,11 @@ object MfmTokenParser {
     }
 
     // regex は "()" で囲まれた部分を1つだけ持つこと
+    // 注意: regex は必ず "^" アンカー付きであること
+    // (find は先頭でマッチしない場合に全位置を走査してしまうため、先頭のみ試行する matchAt を使う)
     val pRegex: (TokenType, Regex) -> TokenParser = { type, regex ->
         { text, holder ->
-            val m = regex.find(text)
+            val m = regex.matchAt(text, 0)
             if (m != null) {
                 TokenParseResult(
                     true,
@@ -168,7 +180,7 @@ object MfmTokenParser {
 
     val pMention: () -> TokenParser = {
         { text, holder ->
-            val m = mentionRegex.find(text)
+            val m = mentionRegex.matchAt(text, 0)
             if (m == null) {
                 toNGParseResult(text)
             } else {
@@ -229,21 +241,91 @@ object MfmTokenParser {
     }
 
     private const val URL_C = ".,a-zA-Z0-9_/:%#@\$&?!~=+-"
-    private const val URL_TAIL_C = "a-zA-Z0-9_/:%#@\$&?!~=+-"   // 末尾は ",." 不可
 
     // https://twitpane.com/hoge(abc) のように末尾が (xxx) のパターン
+    // 旧実装の正規表現 "^https?://([C]+|\(C+\))+(\(C+\)|[TAIL])" は入れ子の量指定子を含み、
+    // Kotlin/Native の正規表現エンジン(再帰実装)で指数的なバックトラックや深い再帰を引き起こし
+    // メインスレッドのハング・クラッシュの原因になるため、同等の判定を行う手書きスキャナで実装する
     val pUrl: () -> TokenParser = {
-        pRegex(
-            TokenType.Url,
-            ("^" +
-                    "(" +
-                    "https?://" +
-                    "([${URL_C}]+|\\([${URL_C}]+\\))+" +
-                    // 末尾は "(...)" または ",." 以外
-                    "(\\([${URL_C}]+\\)|[${URL_TAIL_C}])" +
-                    ")"
-                    ).toRegex()
-        )
+        { text, holder ->
+            val urlLength = scanUrlLength(text)
+            if (urlLength <= 0) {
+                toNGParseResult(text)
+            } else {
+                val url = text.substring(0, urlLength)
+                TokenParseResult(
+                    true,
+                    holder.append(Token(TokenType.Url, url)),
+                    text.substring(urlLength)
+                )
+            }
+        }
+    }
+
+    private fun isUrlChar(c: Char): Boolean {
+        // URL_C = ".,a-zA-Z0-9_/:%#@$&?!~=+-" と同じ文字集合
+        return c in 'a'..'z' || c in 'A'..'Z' || c in '0'..'9' ||
+                c == '.' || c == ',' || c == '_' || c == '/' || c == ':' || c == '%' || c == '#' ||
+                c == '@' || c == '$' || c == '&' || c == '?' || c == '!' || c == '~' || c == '=' ||
+                c == '+' || c == '-'
+    }
+
+    // 旧正規表現 "^https?://([C]+|\(C+\))+(\(C+\)|[TAIL])" と同等の判定を行う
+    // 戻り値: マッチした場合はURL全体の長さ、マッチしない場合は -1
+    private fun scanUrlLength(text: String): Int {
+        val schemeLength = when {
+            text.startsWith("https://") -> 8
+            text.startsWith("http://") -> 7
+            else -> return -1
+        }
+
+        // 「URL文字の連続」または「"(URL文字+)" ブロック」の繰り返しを最長でスキャンする
+        var index = schemeLength
+        var blockCount = 0          // "(...)" ブロックの数
+        var firstBlockStart = -1    // 最初のブロックの開始位置
+        var lastBlockEnd = -1       // 最後のブロックの終了位置(排他)
+        while (index < text.length) {
+            val c = text[index]
+            if (isUrlChar(c)) {
+                index++
+            } else if (c == '(') {
+                // "(URL文字+)" ブロックの判定 (閉じ括弧がなければブロック不成立でスキャン終了)
+                var j = index + 1
+                while (j < text.length && isUrlChar(text[j])) {
+                    j++
+                }
+                if (j > index + 1 && j < text.length && text[j] == ')') {
+                    if (blockCount == 0) {
+                        firstBlockStart = index
+                    }
+                    index = j + 1
+                    lastBlockEnd = index
+                    blockCount++
+                } else {
+                    break
+                }
+            } else {
+                break
+            }
+        }
+
+        // 末尾の "," "." は URL に含めない (旧正規表現の末尾 [TAIL] 判定と同等)
+        var end = index
+        while (end > schemeLength && (text[end - 1] == '.' || text[end - 1] == ',')) {
+            end--
+        }
+
+        // スキーム以降が2文字未満はマッチしない (旧正規表現は「本体+」と「末尾」の2要素が必須)
+        if (end - schemeLength < 2) {
+            return -1
+        }
+
+        // 全体が単独の "(...)" ブロックのみの場合はマッチしない (「本体+」と「末尾」に分割できないため)
+        if (blockCount == 1 && firstBlockStart == schemeLength && lastBlockEnd == end) {
+            return -1
+        }
+
+        return end
     }
 
     // [abc](https://twitpane.com/hoge) または [abc](<https://twitpane.com/hoge>) のようなパターン
@@ -331,7 +413,8 @@ object MfmTokenParser {
     fun tokenize(text: String): TokenParseResult {
 
         // 主に字句解析
-        val result = mfmParser(text, EMPTY_HOLDER)
+        // (TokenHolder はバッキング配列を共有するため、呼び出し毎に新規生成すること)
+        val result = mfmParser(text, TokenHolder(emptyList()))
 
         if (!result.success) {
             return result

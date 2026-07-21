@@ -41,15 +41,38 @@ data class Token(
 
 data class TokenParseResult(val success: Boolean, val holder: TokenHolder, val next: String)
 
-data class TokenHolder(
-    val tokenList: List<Token>
+class TokenHolder private constructor(
+    // append 毎の全リストコピー(O(n^2))を避けるため、バッキング配列を後続の TokenHolder と共有し、
+    // 自身のサイズをスナップショットとして保持する。
+    // 「自分が配列の先端である場合のみ直接追記、分岐した場合のみコピー」とすることで
+    // 直線的なパースでは O(1) で追記できる。
+    private val backing: ArrayList<Token>,
+    private val size: Int,
 ) {
+    constructor(tokenList: List<Token>) : this(ArrayList(tokenList), tokenList.size)
+
+    val tokenList: List<Token>
+        get() = if (backing.size == size) backing else ArrayList(backing.subList(0, size))
+
     fun append(newResult: Token): TokenHolder {
-        return TokenHolder(mutableListOf<Token>().also {
-            it.addAll(this.tokenList)
-            it.add(newResult)
-        })
+        return if (backing.size == size) {
+            // 自分が先端: 共有バッキング配列に直接追記する
+            backing.add(newResult)
+            TokenHolder(backing, size + 1)
+        } else {
+            // 分岐が発生している: 自分のサイズまでをコピーしてから追記する
+            val copied = ArrayList<Token>(size + 1)
+            for (i in 0 until size) {
+                copied.add(backing[i])
+            }
+            copied.add(newResult)
+            TokenHolder(copied, size + 1)
+        }
     }
+
+    override fun equals(other: Any?): Boolean = other is TokenHolder && tokenList == other.tokenList
+    override fun hashCode(): Int = tokenList.hashCode()
+    override fun toString(): String = "TokenHolder(tokenList=$tokenList)"
 }
 
 typealias TokenParser = (String, TokenHolder) -> TokenParseResult
