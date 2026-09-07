@@ -9,7 +9,7 @@ plugins {
 
 allprojects {
     group = 'jp.takke.mfm_kt'
-    version = '1.0.0'
+    version = '1.0.1'
 }
 
 subprojects {
@@ -31,6 +31,22 @@ subprojects {
                         groupId = project.group
                         artifactId = project.name
                         version = project.version
+                    }
+                }
+
+                // takke.github.io/maven (GitHub Pages の静的 Maven リポジトリ) への公開先
+                // 手順:
+                //   1. ../takke.github.io に git@github.com:takke/takke.github.io.git をクローンしておく
+                //   2. ./gradlew :mfm_kt:publishAllPublicationsToGithubIoRepository
+                //      (または ../publish_all_libs_to_github_io.sh)
+                //   3. takke.github.io 側で maven/ を commit & push
+                // 出力先は -PgithubIoMavenDir=/path/to/takke.github.io/maven で上書き可能
+                // 注意: 公開済みバージョンは Gradle が永久キャッシュするため、再公開時は必ず version を上げること
+                repositories {
+                    maven {
+                        name = 'githubIo'
+                        def dir = project.findProperty('githubIoMavenDir') ?: "${rootDir}/../takke.github.io/maven"
+                        url = file(dir).toURI()
                     }
                 }
             }
